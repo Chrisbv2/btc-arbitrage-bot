@@ -6,11 +6,23 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': {
+      // SSE endpoint — must be listed before the generic /api rule.
+      // compress:false prevents Vite's gzip middleware from buffering the
+      // never-ending stream, which would cause events to never reach the browser.
+      '/api/stream': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        compress: false,
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes) => {
+            // Ensure no intermediate cache or compression touches SSE frames
+            proxyRes.headers['cache-control'] = 'no-cache';
+            proxyRes.headers['x-accel-buffering'] = 'no';
+          });
+        },
       },
-      '/events': {
+      // REST API — generic catch-all
+      '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

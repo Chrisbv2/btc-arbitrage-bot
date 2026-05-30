@@ -15,6 +15,7 @@ export function initDb(db: Database.Database): void {
       executable_btc   REAL    NOT NULL,
       usd_value        REAL    NOT NULL,
       is_partial_fill  INTEGER NOT NULL DEFAULT 0,
+      status           TEXT    NOT NULL DEFAULT 'skipped',
       timestamp        INTEGER NOT NULL
     );
 
@@ -47,6 +48,16 @@ export function initDb(db: Database.Database): void {
     );
 
     CREATE INDEX IF NOT EXISTS idx_opp_ts    ON opportunities(timestamp DESC);
+  `);
+
+  // Migration: add status column for databases created before this column existed
+  try {
+    db.exec(`ALTER TABLE opportunities ADD COLUMN status TEXT NOT NULL DEFAULT 'skipped'`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  db.exec(`
     CREATE INDEX IF NOT EXISTS idx_trade_ts  ON trades(timestamp DESC);
     CREATE INDEX IF NOT EXISTS idx_snap_ex   ON price_snapshots(exchange, timestamp DESC);
   `);

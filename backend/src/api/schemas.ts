@@ -66,6 +66,7 @@ export const OpportunitySchema = z.object({
   executableBtc: z.number(),
   usdValue: z.number(),
   isPartialFill: SqliteBool,
+  status: z.enum(['executed', 'skipped']).default('skipped'),
   timestamp: z.number(),
 });
 export type Opportunity = z.infer<typeof OpportunitySchema>;

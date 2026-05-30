@@ -1,118 +1,121 @@
 import { useArbitrageData } from './hooks/useArbitrageData';
-import { StatsCard } from './components/StatsCard';
-import { PriceChart } from './components/PriceChart';
-import { OpportunityLog } from './components/OpportunityLog';
-import { StatusIndicator } from './components/StatusIndicator';
+import { HeaderStats }       from './components/HeaderStats';
+import { PriceComparison }   from './components/PriceComparison';
+import { PnLChart }          from './components/PnLChart';
+import { OpportunitiesTable } from './components/OpportunitiesTable';
+import { TradesLog }         from './components/TradesLog';
+import { WalletBalances }    from './components/WalletBalances';
 
-function fmt(n: number | undefined, decimals = 2): string {
-  if (n === undefined) return '—';
-  return n.toFixed(decimals);
+function LiveDot({ on }: { on: boolean }) {
+  return (
+    <span className="relative inline-flex h-2 w-2">
+      {on && <span className="absolute inline-flex h-full w-full rounded-full bg-profit opacity-75 animate-ping" />}
+      <span className={`relative inline-flex h-2 w-2 rounded-full ${on ? 'bg-profit' : 'bg-muted'}`} />
+    </span>
+  );
+}
+
+function Panel({ title, children, className = '' }: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`bg-panel border border-border rounded-2xl flex flex-col overflow-hidden ${className}`}>
+      <div className="px-4 py-3 border-b border-dim/40 shrink-0">
+        <h2 className="text-[10px] font-bold text-muted uppercase tracking-widest">{title}</h2>
+      </div>
+      <div className="flex-1 overflow-auto p-4">{children}</div>
+    </div>
+  );
 }
 
 export default function App() {
-  const { prices, opportunities, trades, status, wallets, circuitBreaker, spreadHistory } =
-    useArbitrageData();
-
-  const binance = prices['binance'];
-  const kraken  = prices['kraken'];
-
-  // Engine only emits opportunities above the 0.15% threshold — all are profitable
-  const bestOpp = opportunities[0];
-
-  const walletEntries = Object.entries(wallets) as [string, { usdt: number; btc: number }][];
-  const totalUsdt = walletEntries.reduce((s, [, b]) => s + b.usdt, 0);
-  const totalBtc  = walletEntries.reduce((s, [, b]) => s + b.btc,  0);
-
-  const totalNetPnl = trades.reduce((s, t) => s + t.netProfitUsd, 0);
+  const {
+    prices,
+    opportunities,
+    trades,
+    wallets,
+    connStatus,
+    circuitBreaker,
+    uptimeBaseMs,
+    stats,
+  } = useArbitrageData();
 
   return (
-    <div className="min-h-screen bg-surface text-white">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-3 flex items-center justify-between">
+    <div className="min-h-screen bg-surface text-white font-mono">
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-20 border-b border-border bg-surface/90 backdrop-blur px-5 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-accent font-semibold text-lg tracking-tight">₿ ARB</span>
-          <span className="text-gray-600 text-sm">BTC/USDT · Paper Trading</span>
+          <span className="text-accent font-bold text-base tracking-tight">₿ ARB</span>
+          <span className="text-dim">|</span>
+          <span className="text-muted text-xs">BTC/USDT Paper Trading</span>
         </div>
-        <div className="flex items-center gap-4">
+
+        <div className="flex items-center gap-5 text-xs">
           {circuitBreaker.active && (
-            <span className="text-xs text-loss font-semibold animate-pulse">
-              ⚡ Circuit breaker active
+            <span className="text-loss font-bold animate-pulse text-[11px]">
+              ⚡ Circuit Breaker Active
             </span>
           )}
-          <StatusIndicator status={status} />
+          <span className="flex items-center gap-1.5 text-muted">
+            <LiveDot on={connStatus.binance} />
+            Binance
+          </span>
+          <span className="flex items-center gap-1.5 text-muted">
+            <LiveDot on={connStatus.kraken} />
+            Kraken
+          </span>
+          <span className="text-dim font-mono text-[10px]">
+            {new Date().toLocaleTimeString('en-US', { hour12: false })}
+          </span>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        {/* Live stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatsCard
-            label="Binance Ask"
-            value={binance ? `$${fmt(binance.bestAsk)}` : '—'}
-            sub={binance ? `bid $${fmt(binance.bestBid)}` : 'connecting…'}
-            highlight="neutral"
-          />
-          <StatsCard
-            label="Kraken Ask"
-            value={kraken ? `$${fmt(kraken.bestAsk)}` : '—'}
-            sub={kraken ? `bid $${fmt(kraken.bestBid)}` : 'connecting…'}
-            highlight="neutral"
-          />
-          <StatsCard
-            label="Best Opportunity"
-            value={bestOpp ? `${(bestOpp.netProfitPct * 100).toFixed(4)}%` : '—'}
-            sub={
-              bestOpp
-                ? `$${fmt(bestOpp.netProfitUsd, 2)} · ${fmt(bestOpp.executableBtc, 4)} BTC`
-                : undefined
-            }
-            highlight={bestOpp ? 'profit' : 'neutral'}
-          />
-          <StatsCard
-            label="Realised P&L"
-            value={trades.length ? `$${fmt(totalNetPnl, 2)}` : '—'}
-            sub={`${trades.length} trades`}
-            highlight={totalNetPnl > 0 ? 'profit' : totalNetPnl < 0 ? 'loss' : 'neutral'}
-          />
+      {/* ── Main grid ───────────────────────────────────────────────────── */}
+      <main className="max-w-[1600px] mx-auto px-4 py-4 space-y-4">
+
+        {/* Row 1 — KPI strip */}
+        <HeaderStats
+          totalPnl={stats.totalPnl}
+          totalTrades={trades.length}
+          winRate={stats.winRate}
+          uptimeBaseMs={uptimeBaseMs}
+          lastOppTs={stats.lastOppTs}
+        />
+
+        {/* Row 2 — Prices + P&L chart */}
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 md:col-span-4">
+            <PriceComparison prices={prices} />
+          </div>
+          <div className="col-span-12 md:col-span-8">
+            <Panel title="Cumulative P&L — last 100 trades">
+              <PnLChart data={stats.pnlSeries} />
+            </Panel>
+          </div>
         </div>
 
-        {/* Spread chart */}
-        <section className="bg-panel border border-border rounded-xl p-5">
-          <h2 className="text-sm text-gray-400 mb-3 uppercase tracking-wider">
-            Raw Cross-Exchange Spread %
-          </h2>
-          <PriceChart data={spreadHistory} />
-        </section>
+        {/* Row 3 — Wallets (full-width mini cards) */}
+        <Panel title="Paper Wallet Balances">
+          <WalletBalances wallets={wallets} />
+        </Panel>
 
-        {/* Wallet */}
-        <section className="bg-panel border border-border rounded-xl p-5">
-          <h2 className="text-sm text-gray-400 mb-3 uppercase tracking-wider">Paper Wallet</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-            {walletEntries.map(([ex, bal]) => (
-              <div key={ex} className="bg-surface rounded-lg p-3 border border-border">
-                <div className="text-gray-500 text-xs uppercase mb-2">{ex}</div>
-                <div className="text-accent">${bal.usdt.toFixed(2)}</div>
-                <div className="text-gray-300">{bal.btc.toFixed(6)} BTC</div>
-              </div>
-            ))}
-            <div className="bg-surface rounded-lg p-3 border border-border">
-              <div className="text-gray-500 text-xs uppercase mb-2">Total</div>
-              <div className="text-white font-semibold">${totalUsdt.toFixed(2)}</div>
-              <div className="text-gray-300">{totalBtc.toFixed(6)} BTC</div>
-            </div>
+        {/* Row 4 — Opportunities + Trades */}
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-7">
+            <Panel title={`Detected Opportunities (${opportunities.length})`} className="min-h-[340px]">
+              <OpportunitiesTable opportunities={opportunities} />
+            </Panel>
           </div>
-        </section>
+          <div className="col-span-12 lg:col-span-5">
+            <Panel title={`Executed Trades (${trades.length})`} className="min-h-[340px]">
+              <TradesLog trades={trades} />
+            </Panel>
+          </div>
+        </div>
 
-        {/* Opportunity log */}
-        <section className="bg-panel border border-border rounded-xl p-5">
-          <h2 className="text-sm text-gray-400 mb-3 uppercase tracking-wider">
-            Opportunity Log
-            <span className="text-gray-600 normal-case text-xs ml-2">
-              ({opportunities.length} detected)
-            </span>
-          </h2>
-          <OpportunityLog opportunities={opportunities} />
-        </section>
       </main>
     </div>
   );

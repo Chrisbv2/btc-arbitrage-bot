@@ -90,6 +90,7 @@ export interface OpportunityRow {
   executableBtc: number;
   usdValue: number;
   isPartialFill: number; // 0 | 1 — Zod coerces to boolean at the API layer
+  status: 'executed' | 'skipped';
   timestamp: number;
 }
 
@@ -125,6 +126,7 @@ const OPPORTUNITY_COLS = `
   executable_btc  AS executableBtc,
   usd_value       AS usdValue,
   is_partial_fill AS isPartialFill,
+  status,
   timestamp
 `;
 

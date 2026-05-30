@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSSE } from './useSSE';
+import { API_BASE } from '../lib/config';
 
-const API = import.meta.env.VITE_API_URL ?? '';
-
-// ── Types mirroring backend Zod schemas ──────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface PriceSummary {
   exchange: string;
@@ -26,6 +26,7 @@ export interface Opportunity {
   executableBtc: number;
   usdValue: number;
   isPartialFill: boolean;
+  status: 'executed' | 'skipped';
   timestamp: number;
 }
 
@@ -62,64 +63,131 @@ export interface CircuitBreakerState {
   activeUntil?: number;
 }
 
-const MAX_OPPORTUNITIES = 200;
-const MAX_TRADES        = 200;
-const MAX_CHART_POINTS  = 120;
+const MAX_ITEMS = 200;
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
 
 export function useArbitrageData() {
-  const [prices, setPrices]         = useState<Record<string, PriceSummary>>({});
-  const [opportunities, setOpps]    = useState<Opportunity[]>([]);
-  const [trades, setTrades]         = useState<Trade[]>([]);
-  const [status, setStatus]         = useState<ConnectionStatus>({ binance: false, kraken: false });
-  const [wallets, setWallets]       = useState<Record<string, WalletBalance>>({});
-  const [circuitBreaker, setCb]     = useState<CircuitBreakerState>({ active: false });
-  const [spreadHistory, setHistory] = useState<{ t: number; spread: number }[]>([]);
-  const esRef = useRef<EventSource | null>(null);
+  // es is React state — dependent effects re-run reactively when it changes
+  const { es, connected } = useSSE();
 
+  const [prices,     setPrices]  = useState<Record<string, PriceSummary>>({});
+  const [opps,       setOpps]    = useState<Opportunity[]>([]);
+  const [trades,     setTrades]  = useState<Trade[]>([]);
+  const [wallets,    setWallets] = useState<Record<string, WalletBalance>>({});
+  const [connStatus, setConn]    = useState<ConnectionStatus>({ binance: false, kraken: false });
+  const [cb,         setCb]      = useState<CircuitBreakerState>({ active: false });
+  const [uptimeBaseMs, setUptimeBase] = useState(() => Date.now());
+
+  // ── Historical hydration from REST (runs once on mount) ───────────────────
   useEffect(() => {
-    const es = new EventSource(`${API}/api/stream`);
-    esRef.current = es;
+    const load = async () => {
+      try {
+        const [tradesRes, oppsRes, statusRes] = await Promise.all([
+          fetch(`${API_BASE}/api/trades?limit=100`),
+          fetch(`${API_BASE}/api/opportunities?limit=100`),
+          fetch(`${API_BASE}/api/status`),
+        ]);
+        if (!tradesRes.ok || !oppsRes.ok || !statusRes.ok) return;
 
-    // price_update: emitted once per exchange on every order book tick
-    es.addEventListener('price_update', (e) => {
-      const update = JSON.parse(e.data) as PriceSummary;
-      setPrices((prev) => ({ ...prev, [update.exchange]: update }));
-    });
+        const [tradesData, oppsData, statusData] = await Promise.all([
+          tradesRes.json() as Promise<Trade[]>,
+          oppsRes.json()   as Promise<Opportunity[]>,
+          statusRes.json() as Promise<{ uptimeSeconds: number }>,
+        ]);
 
-    // opportunity_detected: emitted when a profitable cross-exchange spread is found
-    es.addEventListener('opportunity_detected', (e) => {
-      const opp = JSON.parse(e.data) as Opportunity;
-      setOpps((prev) => [opp, ...prev].slice(0, MAX_OPPORTUNITIES));
-      setHistory((prev) =>
-        [...prev, { t: opp.timestamp, spread: opp.rawSpreadPct * 100 }].slice(-MAX_CHART_POINTS),
-      );
-    });
-
-    // trade_executed: emitted after a simulated trade is logged to SQLite
-    es.addEventListener('trade_executed', (e) => {
-      const trade = JSON.parse(e.data) as Trade;
-      setTrades((prev) => [trade, ...prev].slice(0, MAX_TRADES));
-    });
-
-    // wallet_update: emitted after every trade execution
-    es.addEventListener('wallet_update', (e) => {
-      setWallets(JSON.parse(e.data) as Record<string, WalletBalance>);
-    });
-
-    // status: connection liveness per exchange
-    es.addEventListener('status', (e) => {
-      setStatus(JSON.parse(e.data) as ConnectionStatus);
-    });
-
-    // circuit_breaker: pauses execution after consecutive losses
-    es.addEventListener('circuit_breaker', (e) => {
-      setCb(JSON.parse(e.data) as CircuitBreakerState);
-    });
-
-    return () => {
-      es.close();
+        setTrades(tradesData);
+        setOpps(oppsData);
+        // Anchor frontend uptime to server uptime
+        setUptimeBase(Date.now() - statusData.uptimeSeconds * 1_000);
+      } catch {
+        // Backend may not be reachable on first render — SSE will recover
+      }
     };
+    load();
   }, []);
 
-  return { prices, opportunities, trades, status, wallets, circuitBreaker, spreadHistory };
+  // ── SSE subscriptions ─────────────────────────────────────────────────────
+  // Depends on `es` so this re-runs when the EventSource goes from null →
+  // live, and cleanup removes all listeners before the ES is closed.
+  useEffect(() => {
+    if (!es) return;
+
+    type H = (e: MessageEvent) => void;
+
+    const onPrice: H = (e) => {
+      const d = JSON.parse(e.data) as PriceSummary;
+      setPrices((prev) => ({ ...prev, [d.exchange]: d }));
+    };
+
+    const onOpp: H = (e) => {
+      const opp = JSON.parse(e.data) as Opportunity;
+      setOpps((prev) => [opp, ...prev].slice(0, MAX_ITEMS));
+    };
+
+    const onTrade: H = (e) => {
+      const t = JSON.parse(e.data) as Trade;
+      setTrades((prev) => [t, ...prev].slice(0, MAX_ITEMS));
+    };
+
+    const onWallets: H = (e) => {
+      setWallets(JSON.parse(e.data) as Record<string, WalletBalance>);
+    };
+
+    const onStatus: H = (e) => {
+      setConn(JSON.parse(e.data) as ConnectionStatus);
+    };
+
+    const onCb: H = (e) => {
+      setCb(JSON.parse(e.data) as CircuitBreakerState);
+    };
+
+    es.addEventListener('price_update',          onPrice   as EventListener);
+    es.addEventListener('opportunity_detected',   onOpp     as EventListener);
+    es.addEventListener('trade_executed',         onTrade   as EventListener);
+    es.addEventListener('wallet_update',          onWallets as EventListener);
+    es.addEventListener('status',                 onStatus  as EventListener);
+    es.addEventListener('circuit_breaker',        onCb      as EventListener);
+
+    return () => {
+      es.removeEventListener('price_update',        onPrice   as EventListener);
+      es.removeEventListener('opportunity_detected', onOpp     as EventListener);
+      es.removeEventListener('trade_executed',       onTrade   as EventListener);
+      es.removeEventListener('wallet_update',        onWallets as EventListener);
+      es.removeEventListener('status',               onStatus  as EventListener);
+      es.removeEventListener('circuit_breaker',      onCb      as EventListener);
+    };
+  }, [es]);
+
+  // ── Derived stats ─────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const totalPnl  = trades.reduce((s, t) => s + t.netProfitUsd, 0);
+    const winCount  = trades.filter((t) => t.netProfitUsd > 0).length;
+    const winRate   = trades.length > 0 ? winCount / trades.length : 0;
+    const lastOppTs = opps[0]?.timestamp ?? null;
+
+    // Cumulative P&L series — oldest first, last 100 trades
+    const pnlSeries = [...trades]
+      .reverse()
+      .slice(0, 100)
+      .reduce<{ t: number; cumPnl: number; tradePnl: number }[]>((acc, t) => {
+        const prev = acc[acc.length - 1]?.cumPnl ?? 0;
+        acc.push({ t: t.timestamp, cumPnl: prev + t.netProfitUsd, tradePnl: t.netProfitUsd });
+        return acc;
+      }, []);
+
+    return { totalPnl, winCount, winRate, lastOppTs, pnlSeries };
+  }, [trades, opps]);
+
+  return {
+    prices,
+    opportunities: opps,
+    trades,
+    wallets,
+    connStatus,
+    circuitBreaker: cb,
+    uptimeBaseMs,
+    connected,
+    stats,
+  };
 }

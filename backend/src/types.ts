@@ -17,6 +17,7 @@ export interface ConnectionStatus {
 
 export interface ArbitrageOpportunity {
   id?: number;
+  status?: 'executed' | 'skipped';
   buyExchange: Exchange;
   sellExchange: Exchange;
   buyAsk: number;

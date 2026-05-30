@@ -141,16 +141,19 @@ export class ArbitrageEngine extends EventEmitter {
     };
 
     // Always persist & broadcast the opportunity
-    const { id: oppId } = insertOpportunity(this.db, opp);
-    this.emit('opportunity', { ...opp, id: oppId });
-
-    // Throttle execution to avoid burst-trading on persistent spreads
+    // Determine status before persist so DB row reflects actual execution outcome
     const dirKey = `${buyExchange}→${sellExchange}`;
     const now = Date.now();
-    if (now - (this.lastTradeTime[dirKey] ?? 0) < TRADE_COOLDOWN_MS) return;
+    const willExecute = (now - (this.lastTradeTime[dirKey] ?? 0)) >= TRADE_COOLDOWN_MS;
+    const status: 'executed' | 'skipped' = willExecute ? 'executed' : 'skipped';
 
-    this.execute(opp, costPerBtc, revenuePerBtc, buyFee, sellFee);
-    this.lastTradeTime[dirKey] = now;
+    const { id: oppId } = insertOpportunity(this.db, { ...opp, status });
+    this.emit('opportunity', { ...opp, id: oppId, status });
+
+    if (willExecute) {
+      this.lastTradeTime[dirKey] = now;
+      this.execute(opp, costPerBtc, revenuePerBtc, buyFee, sellFee);
+    }
   }
 
   // ── Order-book walkers ───────────────────────────────────────────────────────
