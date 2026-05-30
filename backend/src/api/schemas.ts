@@ -50,6 +50,7 @@ export const StatusResponseSchema = z.object({
     kraken: z.boolean(),
   }),
   circuitBreaker: CircuitBreakerStatusSchema,
+  demoMode: z.boolean(),
   version: z.string(),
 });
 export type StatusResponse = z.infer<typeof StatusResponseSchema>;

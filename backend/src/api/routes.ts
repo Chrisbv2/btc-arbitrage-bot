@@ -102,6 +102,7 @@ export function buildRouter(
   wallet: WalletManager,
   connectionStatus: Record<string, boolean>,
   startTime: number,
+  demoMode: boolean,
 ): Router {
   const router = Router();
 
@@ -153,6 +154,7 @@ export function buildRouter(
           resumeAt: cbActive ? resumeAt : null,
           pauseSeconds: 30,
         },
+        demoMode,
         version: '1.0.0',
       });
     }),

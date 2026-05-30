@@ -38,6 +38,7 @@ export default function App() {
     wallets,
     connStatus,
     circuitBreaker,
+    demoMode,
     uptimeBaseMs,
     stats,
   } = useArbitrageData();
@@ -54,6 +55,11 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-5 text-xs">
+          {demoMode && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-accent/15 text-accent border border-accent/30 animate-pulse-slow">
+              ◈ Demo Mode
+            </span>
+          )}
           {circuitBreaker.active && (
             <span className="text-loss font-bold animate-pulse text-[11px]">
               ⚡ Circuit Breaker Active

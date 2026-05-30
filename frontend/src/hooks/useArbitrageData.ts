@@ -77,6 +77,7 @@ export function useArbitrageData() {
   const [wallets,    setWallets] = useState<Record<string, WalletBalance>>({});
   const [connStatus, setConn]    = useState<ConnectionStatus>({ binance: false, kraken: false });
   const [cb,         setCb]      = useState<CircuitBreakerState>({ active: false });
+  const [demoMode,   setDemoMode] = useState(false);
   const [uptimeBaseMs, setUptimeBase] = useState(() => Date.now());
 
   // ── Historical hydration from REST (runs once on mount) ───────────────────
@@ -93,11 +94,12 @@ export function useArbitrageData() {
         const [tradesData, oppsData, statusData] = await Promise.all([
           tradesRes.json() as Promise<Trade[]>,
           oppsRes.json()   as Promise<Opportunity[]>,
-          statusRes.json() as Promise<{ uptimeSeconds: number }>,
+          statusRes.json() as Promise<{ uptimeSeconds: number; demoMode: boolean }>,
         ]);
 
         setTrades(tradesData);
         setOpps(oppsData);
+        setDemoMode(statusData.demoMode);
         // Anchor frontend uptime to server uptime
         setUptimeBase(Date.now() - statusData.uptimeSeconds * 1_000);
       } catch {
@@ -186,6 +188,7 @@ export function useArbitrageData() {
     wallets,
     connStatus,
     circuitBreaker: cb,
+    demoMode,
     uptimeBaseMs,
     connected,
     stats,

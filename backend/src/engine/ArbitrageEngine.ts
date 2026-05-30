@@ -18,7 +18,8 @@ const FEES: Record<Exchange, number> = {
 
 // ── Engine constants ─────────────────────────────────────────────────────────
 const SLIPPAGE            = 0.0005;   // 0.05% per side
-const MIN_NET_PROFIT_PCT  = 0.0015;   // 0.15% minimum threshold after all costs
+const DEMO_MODE           = process.env['DEMO_MODE'] === 'true';
+const MIN_NET_PROFIT_PCT  = DEMO_MODE ? 0.0001 : 0.0015; // 0.01% demo, 0.15% prod
 const BASE_TRADE_USD      = 5_000;
 const MAX_TRADE_USD       = 10_000;
 const SCALE_UP_THRESHOLD  = 0.005;    // 0.50% net → use max trade size

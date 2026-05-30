@@ -20,8 +20,9 @@ import {
   emitCircuitBreaker,
 } from './api/routes';
 
-const PORT     = parseInt(process.env['PORT']   ?? '3001', 10);
-const DB_PATH  = process.env['DB_PATH'] ?? path.join(__dirname, '..', 'data', 'arb.db');
+const PORT      = parseInt(process.env['PORT'] ?? '3001', 10);
+const DB_PATH   = process.env['DB_PATH'] ?? path.join(__dirname, '..', 'data', 'arb.db');
+const DEMO_MODE = process.env['DEMO_MODE'] === 'true';
 
 // Elapsed since start — exposed to routes for uptime
 const startTime = Date.now();
@@ -103,7 +104,7 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use('/api', buildRouter(db, engine, wallet, connectionStatus, startTime));
+app.use('/api', buildRouter(db, engine, wallet, connectionStatus, startTime, DEMO_MODE));
 
 app.listen(PORT, () => {
   console.log(`[server] http://localhost:${PORT}`);
