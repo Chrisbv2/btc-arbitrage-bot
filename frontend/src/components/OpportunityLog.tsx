@@ -25,23 +25,24 @@ export function OpportunityLog({ opportunities }: Props) {
             <th className="text-left py-2 pr-3">Direction</th>
             <th className="text-right py-2 pr-3">Buy Ask</th>
             <th className="text-right py-2 pr-3">Sell Bid</th>
-            <th className="text-right py-2 pr-3">Spread</th>
-            <th className="text-right py-2">Net P&amp;L</th>
+            <th className="text-right py-2 pr-3">Raw Spread</th>
+            <th className="text-right py-2 pr-3">Net P&L</th>
+            <th className="text-right py-2">Size (BTC)</th>
           </tr>
         </thead>
         <tbody>
           {visible.length === 0 && (
             <tr>
-              <td colSpan={6} className="text-center text-gray-600 py-8">
-                No opportunities yet…
+              <td colSpan={7} className="text-center text-gray-600 py-8">
+                Waiting for profitable opportunities…
               </td>
             </tr>
           )}
-          {visible.map((opp, i) => {
-            const profitable = opp.isProfitable;
+          {visible.map((opp) => {
+            const profitable = opp.netProfitPct > 0;
             return (
               <tr
-                key={i}
+                key={opp.id}
                 className={`border-t border-border transition-colors ${
                   profitable ? 'bg-profit/5 hover:bg-profit/10' : 'hover:bg-white/5'
                 }`}
@@ -60,11 +61,22 @@ export function OpportunityLog({ opportunities }: Props) {
                 <td className="py-1.5 pr-3 text-right tabular-nums">
                   ${fmt(opp.sellBid, 2)}
                 </td>
-                <td className={`py-1.5 pr-3 text-right tabular-nums ${opp.rawSpread >= 0 ? 'text-profit' : 'text-loss'}`}>
+                <td
+                  className={`py-1.5 pr-3 text-right tabular-nums ${
+                    opp.rawSpreadPct >= 0 ? 'text-profit' : 'text-loss'
+                  }`}
+                >
                   {fmtPct(opp.rawSpreadPct)}
                 </td>
-                <td className={`py-1.5 text-right tabular-nums font-semibold ${profitable ? 'text-profit' : 'text-loss'}`}>
+                <td
+                  className={`py-1.5 pr-3 text-right tabular-nums font-semibold ${
+                    profitable ? 'text-profit' : 'text-loss'
+                  }`}
+                >
                   {fmtPct(opp.netProfitPct)}
+                </td>
+                <td className="py-1.5 text-right tabular-nums text-gray-400">
+                  {opp.executableBtc.toFixed(4)}
                 </td>
               </tr>
             );
