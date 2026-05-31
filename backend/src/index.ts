@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import Database from 'better-sqlite3';
 import path from 'path';
+import fs from 'fs';
 
 import { BinanceConnector } from './websocket/BinanceConnector';
 import { KrakenConnector }  from './websocket/KrakenConnector';
@@ -35,6 +36,7 @@ const SNAPSHOT_INTERVAL_MS = 1_000;
 const lastSnapshot: Partial<Record<string, number>> = {};
 
 // ── Database ─────────────────────────────────────────────────────────────────
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
