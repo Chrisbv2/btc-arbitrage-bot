@@ -3,7 +3,7 @@ import { fmtPrice, fmtPct } from '../lib/format';
 import type { PriceSummary } from '../hooks/useArbitrageData';
 
 // Fee constants — mirror backend
-const FEES: Record<string, number> = { binance: 0.001, kraken: 0.0026 };
+const FEES: Record<string, number> = { okx: 0.001, kraken: 0.0026 };
 const SLIPPAGE = 0.0005;
 // MIN_NET is computed inside the component from the demoMode prop
 
@@ -79,30 +79,30 @@ function PricePanel({
 }
 
 export function PriceComparison({ prices, demoMode }: Props) {
-  const binance = prices['binance'];
-  const kraken  = prices['kraken'];
+  const okx    = prices['okx'];
+  const kraken = prices['kraken'];
 
   // Mirror backend: 0% threshold in demo mode (any positive-net trade executes),
   // 0.15% in production.
   const MIN_NET = demoMode ? 0 : 0.0015;
 
   const spread = useMemo<SpreadInfo | null>(() => {
-    if (!binance || !kraken) return null;
+    if (!okx || !kraken) return null;
 
     const directions = [
       {
-        direction: 'BNB → KRK',
-        buyExchange: 'binance',
+        direction: 'OKX → KRK',
+        buyExchange: 'okx',
         sellExchange: 'kraken',
-        buyAsk: binance.bestAsk,
+        buyAsk: okx.bestAsk,
         sellBid: kraken.bestBid,
       },
       {
-        direction: 'KRK → BNB',
+        direction: 'KRK → OKX',
         buyExchange: 'kraken',
-        sellExchange: 'binance',
+        sellExchange: 'okx',
         buyAsk: kraken.bestAsk,
-        sellBid: binance.bestBid,
+        sellBid: okx.bestBid,
       },
     ].map(({ direction, buyExchange, sellExchange, buyAsk, sellBid }) => {
       const rawSpreadPct = (sellBid - buyAsk) / buyAsk;
@@ -113,7 +113,7 @@ export function PriceComparison({ prices, demoMode }: Props) {
     });
 
     return directions.sort((a, b) => b.netSpreadPct - a.netSpreadPct)[0];
-  }, [binance, kraken, MIN_NET]);
+  }, [okx, kraken, MIN_NET]);
 
   const hasOpp = spread?.isOpportunity ?? false;
   // In demo mode: gross positive but net negative → show as demo trade indicator
@@ -127,8 +127,8 @@ export function PriceComparison({ prices, demoMode }: Props) {
       </div>
 
       <div className="flex gap-3">
-        <PricePanel label="Binance" data={binance} accentColor="text-accent" />
-        <PricePanel label="Kraken"  data={kraken}  accentColor="text-blue-400" />
+        <PricePanel label="OKX"    data={okx}    accentColor="text-accent" />
+        <PricePanel label="Kraken" data={kraken} accentColor="text-blue-400" />
       </div>
 
       {/* Cross-exchange spread meter */}

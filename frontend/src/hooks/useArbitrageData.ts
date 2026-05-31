@@ -55,7 +55,7 @@ export interface WalletBalance {
 }
 
 export interface ConnectionStatus {
-  binance: boolean;
+  okx:    boolean;
   kraken: boolean;
 }
 
@@ -76,7 +76,7 @@ export function useArbitrageData() {
   const [opps,       setOpps]    = useState<Opportunity[]>([]);
   const [trades,     setTrades]  = useState<Trade[]>([]);
   const [wallets,    setWallets] = useState<Record<string, WalletBalance>>({});
-  const [connStatus, setConn]    = useState<ConnectionStatus>({ binance: false, kraken: false });
+  const [connStatus, setConn]    = useState<ConnectionStatus>({ okx: false, kraken: false });
   const [cb,         setCb]      = useState<CircuitBreakerState>({ active: false });
   const [demoMode,   setDemoMode] = useState(false);
   const [uptimeBaseMs, setUptimeBase] = useState(() => Date.now());

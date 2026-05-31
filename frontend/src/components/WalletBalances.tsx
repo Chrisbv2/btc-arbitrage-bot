@@ -53,10 +53,10 @@ function BalanceCard({
 }
 
 export function WalletBalances({ wallets }: Props) {
-  const binance = wallets['binance'];
-  const kraken  = wallets['kraken'];
+  const okx    = wallets['okx'];
+  const kraken = wallets['kraken'];
 
-  if (!binance && !kraken) {
+  if (!okx && !kraken) {
     return (
       <div className="grid grid-cols-2 gap-2 text-center text-muted text-xs py-4">
         Awaiting wallet data…
@@ -64,22 +64,22 @@ export function WalletBalances({ wallets }: Props) {
     );
   }
 
-  const totalUsdt = (binance?.usdt ?? 0) + (kraken?.usdt ?? 0);
-  const totalBtc  = (binance?.btc  ?? 0) + (kraken?.btc  ?? 0);
+  const totalUsdt = (okx?.usdt    ?? 0) + (kraken?.usdt ?? 0);
+  const totalBtc  = (okx?.btc     ?? 0) + (kraken?.btc  ?? 0);
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2">
-        {binance && (
+        {okx && (
           <>
-            <BalanceCard exchange="Binance" currency="USDT" value={binance.usdt} label="tether balance" />
-            <BalanceCard exchange="Binance" currency="BTC"  value={binance.btc}  label="bitcoin balance" />
+            <BalanceCard exchange="OKX"    currency="USDT" value={okx.usdt}    label="tether balance" />
+            <BalanceCard exchange="OKX"    currency="BTC"  value={okx.btc}     label="bitcoin balance" />
           </>
         )}
         {kraken && (
           <>
-            <BalanceCard exchange="Kraken"  currency="USDT" value={kraken.usdt}  label="tether balance" />
-            <BalanceCard exchange="Kraken"  currency="BTC"  value={kraken.btc}   label="bitcoin balance" />
+            <BalanceCard exchange="Kraken" currency="USDT" value={kraken.usdt} label="tether balance" />
+            <BalanceCard exchange="Kraken" currency="BTC"  value={kraken.btc}  label="bitcoin balance" />
           </>
         )}
       </div>

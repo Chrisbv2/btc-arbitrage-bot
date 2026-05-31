@@ -73,8 +73,8 @@ export default function App() {
             </span>
           )}
           <span className="flex items-center gap-1.5 text-muted">
-            <LiveDot on={connStatus.binance} />
-            Binance
+            <LiveDot on={connStatus.okx} />
+            OKX
           </span>
           <span className="flex items-center gap-1.5 text-muted">
             <LiveDot on={connStatus.kraken} />

@@ -5,7 +5,7 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-import { BinanceConnector } from './websocket/BinanceConnector';
+import { OKXConnector } from './websocket/OKXConnector';
 import { KrakenConnector }  from './websocket/KrakenConnector';
 import { ArbitrageEngine }  from './engine/ArbitrageEngine';
 import { WalletManager }    from './wallet/WalletManager';
@@ -45,11 +45,11 @@ initDb(db);
 // ── Core components ───────────────────────────────────────────────────────────
 const wallet = new WalletManager();
 const engine = new ArbitrageEngine(wallet, db);
-const connectionStatus: Record<string, boolean> = { binance: false, kraken: false };
+const connectionStatus: Record<string, boolean> = { okx: false, kraken: false };
 
 // ── WebSocket connectors ──────────────────────────────────────────────────────
-const binance = new BinanceConnector();
-const kraken  = new KrakenConnector();
+const okx    = new OKXConnector();
+const kraken = new KrakenConnector();
 
 function onOrderBook(book: Parameters<typeof engine.update>[0]): void {
   engine.update(book);
@@ -66,11 +66,11 @@ function onOrderBook(book: Parameters<typeof engine.update>[0]): void {
   }
 }
 
-binance.on('orderBook', onOrderBook);
-kraken.on('orderBook',  onOrderBook);
+okx.on('orderBook',    onOrderBook);
+kraken.on('orderBook', onOrderBook);
 
-binance.on('status', (s) => handleConnectorStatus(s, connectionStatus));
-kraken.on('status',  (s) => handleConnectorStatus(s, connectionStatus));
+okx.on('status',    (s) => handleConnectorStatus(s, connectionStatus));
+kraken.on('status', (s) => handleConnectorStatus(s, connectionStatus));
 
 // ── Engine → SSE ──────────────────────────────────────────────────────────────
 engine.on('opportunity', (opp) => {
@@ -116,14 +116,14 @@ app.use('/api', buildRouter(db, engine, wallet, connectionStatus, startTime, DEM
 
 app.listen(PORT, () => {
   console.log(`[server] http://localhost:${PORT}`);
-  binance.connect();
+  okx.connect();
   kraken.connect();
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────────────────────
 function shutdown(): void {
   console.log('\n[server] shutting down…');
-  binance.disconnect();
+  okx.disconnect();
   kraken.disconnect();
   db.close();
   process.exit(0);

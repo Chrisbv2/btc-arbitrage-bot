@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 // ── Primitives ────────────────────────────────────────────────────────────────
 
-export const ExchangeSchema = z.enum(['binance', 'kraken']);
+export const ExchangeSchema = z.enum(['okx', 'kraken']);
 
 // SQLite stores booleans as 0/1 integers; coerce on the way out
 const SqliteBool = z.union([z.boolean(), z.number()]).transform((v) => Boolean(v));
@@ -30,7 +30,7 @@ export const WalletBalanceSchema = z.object({
 export type WalletBalance = z.infer<typeof WalletBalanceSchema>;
 
 export const WalletsResponseSchema = z.object({
-  binance: WalletBalanceSchema,
+  okx:    WalletBalanceSchema,
   kraken: WalletBalanceSchema,
 });
 export type WalletsResponse = z.infer<typeof WalletsResponseSchema>;
@@ -46,7 +46,7 @@ export const StatusResponseSchema = z.object({
   running: z.literal(true),
   uptimeSeconds: z.number(),
   connections: z.object({
-    binance: z.boolean(),
+    okx:    z.boolean(),
     kraken: z.boolean(),
   }),
   circuitBreaker: CircuitBreakerStatusSchema,
@@ -132,7 +132,7 @@ export const WalletUpdateEventSchema = WalletsResponseSchema;
 export type WalletUpdateEvent = z.infer<typeof WalletUpdateEventSchema>;
 
 export const ConnectionStatusEventSchema = z.object({
-  binance: z.boolean(),
+  okx:    z.boolean(),
   kraken: z.boolean(),
 });
 

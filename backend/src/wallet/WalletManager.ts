@@ -7,7 +7,7 @@ export class WalletManager {
   // In-memory balances updated synchronously on every trade.
   // better-sqlite3 handles the durable audit log; no async needed.
   private readonly balances: Record<Exchange, WalletBalance> = {
-    binance: { usdt: INITIAL_USDT, btc: INITIAL_BTC },
+    okx:    { usdt: INITIAL_USDT, btc: INITIAL_BTC },
     kraken: { usdt: INITIAL_USDT, btc: INITIAL_BTC },
   };
 
@@ -18,7 +18,7 @@ export class WalletManager {
 
   getAllBalances(): Record<Exchange, WalletBalance> {
     return {
-      binance: { ...this.balances.binance },
+      okx:    { ...this.balances.okx },
       kraken: { ...this.balances.kraken },
     };
   }

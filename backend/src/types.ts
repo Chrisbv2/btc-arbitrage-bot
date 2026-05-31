@@ -1,4 +1,4 @@
-export type Exchange = 'binance' | 'kraken';
+export type Exchange = 'okx' | 'kraken';
 
 export interface OrderBook {
   exchange: Exchange;

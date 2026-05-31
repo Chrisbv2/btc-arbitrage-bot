@@ -154,7 +154,7 @@ export function buildRouter(
         running: true,
         uptimeSeconds: (Date.now() - startTime) / 1000,
         connections: {
-          binance: connectionStatus['binance'] ?? false,
+          okx:    connectionStatus['okx']    ?? false,
           kraken: connectionStatus['kraken'] ?? false,
         },
         circuitBreaker: {

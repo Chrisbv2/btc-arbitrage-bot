@@ -18,8 +18,8 @@ export function StatusIndicator({ status }: Props) {
   return (
     <div className="flex items-center gap-4 text-xs text-gray-400">
       <span className="flex items-center gap-1.5">
-        <Dot live={status.binance} />
-        Binance
+        <Dot live={status.okx} />
+        OKX
       </span>
       <span className="flex items-center gap-1.5">
         <Dot live={status.kraken} />

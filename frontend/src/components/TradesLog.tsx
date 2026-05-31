@@ -113,8 +113,8 @@ function TradeRow({ trade, index }: { trade: Trade; index: number }) {
                 +${(trade.usdRevenue - trade.usdCost + trade.buyFeeUsd + trade.sellFeeUsd + trade.slippageCostUsd).toFixed(4)}
               </span>
             </div>
-            <FeeRow label="Buy fee"     value={trade.buyFeeUsd}       note={`${trade.buyExchange} 0.10%`} />
-            <FeeRow label="Sell fee"    value={trade.sellFeeUsd}      note={`${trade.sellExchange} 0.26%`} />
+            <FeeRow label="Buy fee"     value={trade.buyFeeUsd}  note={`${trade.buyExchange} ${trade.buyExchange === 'kraken' ? '0.26' : '0.10'}%`} />
+            <FeeRow label="Sell fee"    value={trade.sellFeeUsd} note={`${trade.sellExchange} ${trade.sellExchange === 'kraken' ? '0.26' : '0.10'}%`} />
             <FeeRow label="Slippage"    value={trade.slippageCostUsd} note="0.05% × 2 sides" />
             <div className={`flex justify-between items-baseline border-t border-dim/40 pt-1.5 mt-1`}>
               <span className="font-semibold text-white">Net result</span>

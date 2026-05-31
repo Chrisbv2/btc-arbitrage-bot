@@ -12,8 +12,8 @@ import { insertTrade, insertOpportunity } from '../db/queries';
 
 // ── Fee constants (hardcoded per spec) ───────────────────────────────────────
 const FEES: Record<Exchange, number> = {
-  binance: 0.001,   // 0.10% maker
-  kraken: 0.0026,   // 0.26% taker
+  okx:    0.001,   // 0.10% taker
+  kraken: 0.0026,  // 0.26% taker
 };
 
 // ── Engine constants ─────────────────────────────────────────────────────────
@@ -79,12 +79,12 @@ export class ArbitrageEngine extends EventEmitter {
   private evaluate(): void {
     if (this.isCircuitBreakerActive()) return;
 
-    const binance = this.books.get('binance');
-    const kraken  = this.books.get('kraken');
-    if (!binance || !kraken) return;
+    const okx    = this.books.get('okx');
+    const kraken = this.books.get('kraken');
+    if (!okx || !kraken) return;
 
-    this.checkDirection('binance', binance, 'kraken', kraken);
-    this.checkDirection('kraken',  kraken,  'binance', binance);
+    this.checkDirection('okx',    okx,    'kraken', kraken);
+    this.checkDirection('kraken', kraken, 'okx',    okx);
   }
 
   private checkDirection(
