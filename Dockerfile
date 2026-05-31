@@ -1,17 +1,18 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 # Install native build tools for better-sqlite3 (requires node-gyp on Alpine).
+# Railway root directory is set to /backend, so all paths are relative to that.
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache python3 make g++
 
-WORKDIR /app/backend
+WORKDIR /app
 
 # Layer-cache deps separately from source
-COPY backend/package*.json ./
+COPY package*.json ./
 RUN npm ci
 
-COPY backend/tsconfig.json ./
-COPY backend/src ./src
+COPY tsconfig.json ./
+COPY src ./src
 
 RUN npm run build
 
@@ -27,9 +28,9 @@ RUN addgroup -S arb && adduser -S arb -G arb
 WORKDIR /app
 
 # Copy compiled output and pruned production deps from builder
-COPY --from=builder --chown=arb:arb /app/backend/dist         ./dist
-COPY --from=builder --chown=arb:arb /app/backend/node_modules ./node_modules
-COPY --from=builder --chown=arb:arb /app/backend/package.json ./package.json
+COPY --from=builder --chown=arb:arb /app/dist         ./dist
+COPY --from=builder --chown=arb:arb /app/node_modules ./node_modules
+COPY --from=builder --chown=arb:arb /app/package.json ./package.json
 
 # Persistent data directory for SQLite — mount a volume here in production
 RUN mkdir -p /app/data && chown -R arb:arb /app/data
