@@ -87,6 +87,7 @@ export const TradeSchema = z.object({
   netProfitUsd: z.number(),
   netProfitPct: z.number(),
   isPartialFill: SqliteBool,
+  isDemo: SqliteBool,
   timestamp: z.number(),
 });
 export type Trade = z.infer<typeof TradeSchema>;

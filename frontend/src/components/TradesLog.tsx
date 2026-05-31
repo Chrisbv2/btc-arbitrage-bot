@@ -22,8 +22,21 @@ function TradeRow({ trade, index }: { trade: Trade; index: number }) {
   const [open, setOpen] = useState(false);
   const profitable = trade.netProfitUsd >= 0;
 
+  // Colour scheme: demo → amber, profitable → green, loss → red
+  const accentClass = trade.isDemo
+    ? 'text-accent'
+    : profitable
+    ? 'text-profit'
+    : 'text-loss';
+
+  const borderClass = trade.isDemo
+    ? 'border-accent/25 bg-accent/[0.03]'
+    : profitable
+    ? 'border-profit/20'
+    : 'border-loss/20';
+
   return (
-    <div className={`border border-dim/50 rounded-xl overflow-hidden transition-all duration-200 ${profitable ? 'border-profit/20' : 'border-loss/20'}`}>
+    <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${borderClass}`}>
       {/* Summary row */}
       <button
         type="button"
@@ -36,14 +49,26 @@ function TradeRow({ trade, index }: { trade: Trade; index: number }) {
         <span className="text-[11px] text-muted font-mono w-5 text-right shrink-0">
           #{index + 1}
         </span>
+
+        {/* Direction */}
         <span className="text-xs font-semibold shrink-0">
           <span className="text-accent">{trade.buyExchange.toUpperCase()}</span>
           <span className="text-dim mx-1">→</span>
           <span className="text-blue-400">{trade.sellExchange.toUpperCase()}</span>
         </span>
-        <span className={`text-sm font-bold font-mono tabular-nums ml-auto ${profitable ? 'text-profit' : 'text-loss'}`}>
+
+        {/* Demo badge */}
+        {trade.isDemo && (
+          <span className="text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded bg-accent/15 text-accent border border-accent/30 shrink-0">
+            DEMO TRADE
+          </span>
+        )}
+
+        {/* Net P&L */}
+        <span className={`text-sm font-bold font-mono tabular-nums ml-auto ${accentClass}`}>
           {fmtPnl(trade.netProfitUsd)}
         </span>
+
         <span className="text-[11px] text-muted font-mono whitespace-nowrap">
           {fmtTime(trade.timestamp)}
         </span>
@@ -52,6 +77,17 @@ function TradeRow({ trade, index }: { trade: Trade; index: number }) {
       {/* Expanded detail */}
       {open && (
         <div className="border-t border-dim/40 px-4 py-3 bg-surface/60 space-y-3 text-[11px]">
+          {/* Demo mode note */}
+          {trade.isDemo && (
+            <div className="flex items-start gap-2 px-2.5 py-2 rounded-lg bg-accent/10 border border-accent/20 text-accent text-[11px]">
+              <span className="shrink-0 mt-px">⚡</span>
+              <span>
+                <strong>Demo Trade</strong> — gross spread was positive but fees and slippage
+                made this net-unprofitable. In production mode this would be skipped.
+              </span>
+            </div>
+          )}
+
           {/* Trade legs */}
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-panel rounded-lg p-2.5 space-y-1">
@@ -77,12 +113,12 @@ function TradeRow({ trade, index }: { trade: Trade; index: number }) {
                 +${(trade.usdRevenue - trade.usdCost + trade.buyFeeUsd + trade.sellFeeUsd + trade.slippageCostUsd).toFixed(4)}
               </span>
             </div>
-            <FeeRow label="Buy fee (Binance 0.10%)"  value={trade.buyFeeUsd}      note={`Binance ${(0.001 * 100).toFixed(2)}%`} />
-            <FeeRow label="Sell fee (Kraken 0.26%)"  value={trade.sellFeeUsd}     note={`Kraken ${(0.0026 * 100).toFixed(2)}%`} />
-            <FeeRow label="Slippage est. (0.05%×2)"  value={trade.slippageCostUsd} note="both legs" />
-            <div className="flex justify-between items-baseline border-t border-dim/40 pt-1.5 mt-1">
-              <span className="font-semibold text-white">Net profit</span>
-              <span className={`font-mono font-bold tabular-nums ${profitable ? 'text-profit' : 'text-loss'}`}>
+            <FeeRow label="Buy fee"     value={trade.buyFeeUsd}       note={`${trade.buyExchange} 0.10%`} />
+            <FeeRow label="Sell fee"    value={trade.sellFeeUsd}      note={`${trade.sellExchange} 0.26%`} />
+            <FeeRow label="Slippage"    value={trade.slippageCostUsd} note="0.05% × 2 sides" />
+            <div className={`flex justify-between items-baseline border-t border-dim/40 pt-1.5 mt-1`}>
+              <span className="font-semibold text-white">Net result</span>
+              <span className={`font-mono font-bold tabular-nums ${accentClass}`}>
                 {fmtPnl(trade.netProfitUsd)}{' '}
                 <span className="text-[10px] font-normal">({fmtPct(trade.netProfitPct)})</span>
               </span>

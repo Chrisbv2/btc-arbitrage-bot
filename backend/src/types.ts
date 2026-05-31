@@ -33,6 +33,7 @@ export interface ArbitrageOpportunity {
 
 export interface TradeRecord {
   id?: number;
+  isDemo?: boolean; // true when demo-mode executes a gross-positive but net-negative spread
   buyExchange: Exchange;
   sellExchange: Exchange;
   buyAsk: number;

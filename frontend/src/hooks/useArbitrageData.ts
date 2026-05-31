@@ -45,6 +45,7 @@ export interface Trade {
   netProfitUsd: number;
   netProfitPct: number;
   isPartialFill: boolean;
+  isDemo: boolean;
   timestamp: number;
 }
 

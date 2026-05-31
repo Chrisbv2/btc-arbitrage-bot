@@ -24,6 +24,9 @@ const PORT      = parseInt(process.env['PORT'] ?? '3001', 10);
 const DB_PATH   = process.env['DB_PATH'] ?? path.join(__dirname, '..', 'data', 'arb.db');
 const DEMO_MODE = process.env['DEMO_MODE'] === 'true';
 
+// Log immediately so we know dotenv loaded .env before ArbitrageEngine read process.env
+console.log(`[startup] DEMO_MODE env="${process.env['DEMO_MODE'] ?? '(not set)'}" → ${DEMO_MODE}`);
+
 // Elapsed since start — exposed to routes for uptime
 const startTime = Date.now();
 

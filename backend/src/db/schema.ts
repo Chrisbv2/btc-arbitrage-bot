@@ -35,6 +35,7 @@ export function initDb(db: Database.Database): void {
       net_profit_usd    REAL    NOT NULL,
       net_profit_pct    REAL    NOT NULL,
       is_partial_fill   INTEGER NOT NULL DEFAULT 0,
+      is_demo           INTEGER NOT NULL DEFAULT 0,
       timestamp         INTEGER NOT NULL
     );
 
@@ -50,11 +51,12 @@ export function initDb(db: Database.Database): void {
     CREATE INDEX IF NOT EXISTS idx_opp_ts    ON opportunities(timestamp DESC);
   `);
 
-  // Migration: add status column for databases created before this column existed
-  try {
-    db.exec(`ALTER TABLE opportunities ADD COLUMN status TEXT NOT NULL DEFAULT 'skipped'`);
-  } catch {
-    // Column already exists — safe to ignore
+  // Migrations for columns added after initial schema
+  for (const ddl of [
+    `ALTER TABLE opportunities ADD COLUMN status  TEXT    NOT NULL DEFAULT 'skipped'`,
+    `ALTER TABLE trades        ADD COLUMN is_demo INTEGER NOT NULL DEFAULT 0`,
+  ]) {
+    try { db.exec(ddl); } catch { /* column already exists */ }
   }
 
   db.exec(`

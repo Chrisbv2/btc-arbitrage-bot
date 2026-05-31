@@ -19,7 +19,14 @@ const FEES: Record<Exchange, number> = {
 // ── Engine constants ─────────────────────────────────────────────────────────
 const SLIPPAGE            = 0.0005;   // 0.05% per side
 const DEMO_MODE           = process.env['DEMO_MODE'] === 'true';
-const MIN_NET_PROFIT_PCT  = DEMO_MODE ? 0.0001 : 0.0015; // 0.01% demo, 0.15% prod
+// In demo mode the threshold drops to 0 so any positive-net trade executes normally;
+// gross-positive-but-net-negative trades additionally execute as labelled DEMO TRADEs.
+const MIN_NET_PROFIT_PCT  = DEMO_MODE ? 0 : 0.0015;
+
+console.log(
+  `[engine] DEMO_MODE: ${DEMO_MODE} — threshold: ${(MIN_NET_PROFIT_PCT * 100).toFixed(4)}%` +
+  (DEMO_MODE ? '  (net<0 gross-positive trades execute as DEMO TRADEs)' : '  (set DEMO_MODE=true in backend/.env)')
+);
 const BASE_TRADE_USD      = 5_000;
 const MAX_TRADE_USD       = 10_000;
 const SCALE_UP_THRESHOLD  = 0.005;    // 0.50% net → use max trade size
@@ -93,7 +100,19 @@ export class ArbitrageEngine extends EventEmitter {
     const netProfitPct  = (revenuePerBtc - costPerBtc) / costPerBtc;
     const rawSpreadPct  = (sellBook.bestBid - buyBook.bestAsk) / buyBook.bestAsk;
 
-    if (netProfitPct < MIN_NET_PROFIT_PCT) return;
+    // DEMO TRADE: gross spread is positive but net spread is negative after fees+slippage.
+    // Only fires in DEMO_MODE — lets the dashboard show trade flow without a real inefficiency.
+    const isDemoTrade = DEMO_MODE && rawSpreadPct > 0 && netProfitPct < 0;
+
+    console.log(
+      `[arb] ${buyExchange}→${sellExchange}` +
+      `  raw:${rawSpreadPct >= 0 ? '+' : ''}${(rawSpreadPct * 100).toFixed(4)}%` +
+      `  net:${netProfitPct >= 0 ? '+' : ''}${(netProfitPct * 100).toFixed(4)}%` +
+      `  threshold:${(MIN_NET_PROFIT_PCT * 100).toFixed(4)}%` +
+      (netProfitPct >= MIN_NET_PROFIT_PCT ? '  ✓ OPPORTUNITY' : isDemoTrade ? '  ⚡ DEMO TRADE' : ''),
+    );
+
+    if (netProfitPct < MIN_NET_PROFIT_PCT && !isDemoTrade) return;
 
     // ── Trade size decision ──────────────────────────────────────────────────
     const buyerBalance  = this.wallet.getBalance(buyExchange);
@@ -153,7 +172,7 @@ export class ArbitrageEngine extends EventEmitter {
 
     if (willExecute) {
       this.lastTradeTime[dirKey] = now;
-      this.execute(opp, costPerBtc, revenuePerBtc, buyFee, sellFee);
+      this.execute(opp, costPerBtc, revenuePerBtc, buyFee, sellFee, isDemoTrade);
     }
   }
 
@@ -197,6 +216,7 @@ export class ArbitrageEngine extends EventEmitter {
     revenuePerBtc: number,
     buyFee: number,
     sellFee: number,
+    isDemo = false,
   ): void {
     const { buyExchange, sellExchange, executableBtc, buyAsk, sellBid, isPartialFill } = opp;
 
@@ -228,20 +248,23 @@ export class ArbitrageEngine extends EventEmitter {
     const netProfitPct    = netProfitUsd / usdCost;
 
     // ── Circuit breaker ────────────────────────────────────────────────────────
-    if (netProfitUsd < 0) {
-      this.consecutiveLosses++;
-      if (this.consecutiveLosses >= CB_LOSS_LIMIT) {
-        this.circuitBreakerUntil = Date.now() + CB_PAUSE_MS;
-        const evt: CircuitBreakerEvent = {
-          activeUntil: this.circuitBreakerUntil,
-          consecutiveLosses: this.consecutiveLosses,
-        };
-        console.warn(`[Engine] Circuit breaker active for ${CB_PAUSE_MS / 1000}s after ${this.consecutiveLosses} consecutive losses`);
+    // Demo trades are intentionally unprofitable — don't penalise the breaker.
+    if (!isDemo) {
+      if (netProfitUsd < 0) {
+        this.consecutiveLosses++;
+        if (this.consecutiveLosses >= CB_LOSS_LIMIT) {
+          this.circuitBreakerUntil = Date.now() + CB_PAUSE_MS;
+          const evt: CircuitBreakerEvent = {
+            activeUntil: this.circuitBreakerUntil,
+            consecutiveLosses: this.consecutiveLosses,
+          };
+          console.warn(`[Engine] Circuit breaker active for ${CB_PAUSE_MS / 1000}s after ${this.consecutiveLosses} consecutive losses`);
+          this.consecutiveLosses = 0;
+          this.emit('circuitBreaker', evt);
+        }
+      } else {
         this.consecutiveLosses = 0;
-        this.emit('circuitBreaker', evt);
       }
-    } else {
-      this.consecutiveLosses = 0;
     }
 
     const trade: TradeRecord = {
@@ -258,6 +281,7 @@ export class ArbitrageEngine extends EventEmitter {
       netProfitUsd,
       netProfitPct,
       isPartialFill,
+      isDemo,
       timestamp: Date.now(),
     };
 

@@ -41,12 +41,12 @@ export function insertTrade(
       (buy_exchange, sell_exchange, buy_ask, sell_bid,
        btc_amount, usd_cost, usd_revenue,
        buy_fee_usd, sell_fee_usd, slippage_cost_usd,
-       net_profit_usd, net_profit_pct, is_partial_fill, timestamp)
+       net_profit_usd, net_profit_pct, is_partial_fill, is_demo, timestamp)
     VALUES
       (@buyExchange, @sellExchange, @buyAsk, @sellBid,
        @btcAmount, @usdCost, @usdRevenue,
        @buyFeeUsd, @sellFeeUsd, @slippageCostUsd,
-       @netProfitUsd, @netProfitPct, @isPartialFill, @timestamp)
+       @netProfitUsd, @netProfitPct, @isPartialFill, @isDemo, @timestamp)
   `).run({
     buyExchange:     t.buyExchange,
     sellExchange:    t.sellExchange,
@@ -61,6 +61,7 @@ export function insertTrade(
     netProfitUsd:    t.netProfitUsd,
     netProfitPct:    t.netProfitPct,
     isPartialFill:   t.isPartialFill ? 1 : 0,
+    isDemo:          t.isDemo ? 1 : 0,
     timestamp:       t.timestamp,
   });
   return { id: Number(result.lastInsertRowid) };
@@ -109,6 +110,7 @@ export interface TradeRow {
   netProfitUsd: number;
   netProfitPct: number;
   isPartialFill: number;
+  isDemo: number;
   timestamp: number;
 }
 
@@ -145,6 +147,7 @@ const TRADE_COLS = `
   net_profit_usd    AS netProfitUsd,
   net_profit_pct    AS netProfitPct,
   is_partial_fill   AS isPartialFill,
+  is_demo           AS isDemo,
   timestamp
 `;
 

@@ -94,7 +94,7 @@ export default function App() {
         {/* Row 2 — Prices + P&L chart */}
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 md:col-span-4">
-            <PriceComparison prices={prices} />
+            <PriceComparison prices={prices} demoMode={demoMode} />
           </div>
           <div className="col-span-12 md:col-span-8">
             <Panel title="Cumulative P&L — last 100 trades">
