@@ -2,10 +2,12 @@ import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import type { ConnectionStatus, OrderBook } from '../types';
 
-// Partial order book snapshot — full top-5 on every tick, no local book needed
-const STREAM_URL = 'wss://stream.binance.com:9443/ws/btcusdt@depth5@100ms';
+// Port 443 instead of 9443 — Railway (and most cloud providers) block non-standard
+// outbound ports; 443 is always open for TLS traffic.
+const STREAM_URL = 'wss://stream.binance.com:443/ws/btcusdt@depth5@100ms';
 const INITIAL_BACKOFF_MS = 1_000;
 const MAX_BACKOFF_MS = 30_000;
+const CONNECT_TIMEOUT_MS = 10_000;
 
 interface BinanceDepthFrame {
   lastUpdateId: number;
@@ -16,15 +18,29 @@ interface BinanceDepthFrame {
 export class BinanceConnector extends EventEmitter {
   private ws: WebSocket | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
   private backoffMs = INITIAL_BACKOFF_MS;
   private reconnectAttempts = 0;
   private alive = true;
 
   connect(): void {
     this.alive = true;
+    console.log(`[Binance] connecting to ${STREAM_URL}`);
     this.ws = new WebSocket(STREAM_URL);
 
+    // Treat a hung handshake the same as a disconnect so backoff kicks in.
+    this.connectTimeoutTimer = setTimeout(() => {
+      if (this.ws?.readyState !== WebSocket.OPEN) {
+        console.error(`[Binance] connection timeout after ${CONNECT_TIMEOUT_MS}ms — closing`);
+        this.ws?.terminate();
+      }
+    }, CONNECT_TIMEOUT_MS);
+
     this.ws.on('open', () => {
+      if (this.connectTimeoutTimer) {
+        clearTimeout(this.connectTimeoutTimer);
+        this.connectTimeoutTimer = null;
+      }
       console.log('[Binance] connected');
       this.backoffMs = INITIAL_BACKOFF_MS;
       this.reconnectAttempts = 0;
@@ -72,8 +88,8 @@ export class BinanceConnector extends EventEmitter {
       if (this.alive) this.scheduleReconnect();
     });
 
-    this.ws.on('error', (err) => {
-      console.error('[Binance] ws error:', err.message);
+    this.ws.on('error', (err: NodeJS.ErrnoException) => {
+      console.error('[Binance] ws error:', err.message, '| code:', err.code ?? 'n/a', '| url:', STREAM_URL);
     });
   }
 
@@ -88,6 +104,7 @@ export class BinanceConnector extends EventEmitter {
   disconnect(): void {
     this.alive = false;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this.connectTimeoutTimer) clearTimeout(this.connectTimeoutTimer);
     this.ws?.close();
   }
 }

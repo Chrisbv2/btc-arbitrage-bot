@@ -245,6 +245,13 @@ export function buildRouter(
     }),
   );
 
+  // ── POST /api/demo-mode — toggle demo mode at runtime ───────────────────────
+  router.post('/demo-mode', (_req, res) => {
+    const newMode = !engine.getDemoMode();
+    engine.setDemoMode(newMode);
+    res.json({ demoMode: newMode });
+  });
+
   return router;
 }
 

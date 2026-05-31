@@ -182,6 +182,16 @@ export function useArbitrageData() {
     return { totalPnl, winCount, winRate, lastOppTs, pnlSeries };
   }, [trades, opps]);
 
+  const toggleDemoMode = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/demo-mode`, { method: 'POST' });
+      const data = await res.json() as { demoMode: boolean };
+      setDemoMode(data.demoMode);
+    } catch {
+      // backend unreachable — ignore, UI keeps showing current state
+    }
+  };
+
   return {
     prices,
     opportunities: opps,
@@ -190,6 +200,7 @@ export function useArbitrageData() {
     connStatus,
     circuitBreaker: cb,
     demoMode,
+    toggleDemoMode,
     uptimeBaseMs,
     connected,
     stats,

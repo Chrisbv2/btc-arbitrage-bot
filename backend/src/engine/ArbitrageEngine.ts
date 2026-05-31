@@ -17,16 +17,8 @@ const FEES: Record<Exchange, number> = {
 };
 
 // ── Engine constants ─────────────────────────────────────────────────────────
-const SLIPPAGE            = 0.0005;   // 0.05% per side
-const DEMO_MODE           = process.env['DEMO_MODE'] === 'true';
-// In demo mode the threshold drops to 0 so any positive-net trade executes normally;
-// gross-positive-but-net-negative trades additionally execute as labelled DEMO TRADEs.
-const MIN_NET_PROFIT_PCT  = DEMO_MODE ? 0 : 0.0015;
-
-console.log(
-  `[engine] DEMO_MODE: ${DEMO_MODE} — threshold: ${(MIN_NET_PROFIT_PCT * 100).toFixed(4)}%` +
-  (DEMO_MODE ? '  (net<0 gross-positive trades execute as DEMO TRADEs)' : '  (set DEMO_MODE=true in backend/.env)')
-);
+const SLIPPAGE = 0.0005; // 0.05% per side
+const NET_PROFIT_THRESHOLD = 0.0015; // 0.15% minimum for real profitable trades
 const BASE_TRADE_USD      = 5_000;
 const MAX_TRADE_USD       = 10_000;
 const SCALE_UP_THRESHOLD  = 0.005;    // 0.50% net → use max trade size
@@ -42,12 +34,27 @@ export class ArbitrageEngine extends EventEmitter {
   private consecutiveLosses = 0;
   private circuitBreakerUntil = 0;
   private lastTradeTime: Partial<Record<string, number>> = {};
+  private demoMode: boolean;
 
   constructor(
     private readonly wallet: WalletManager,
     private readonly db: Database.Database,
   ) {
     super();
+    this.demoMode = process.env['DEMO_MODE'] === 'true';
+    console.log(
+      `[engine] DEMO_MODE: ${this.demoMode} — threshold: ${this.demoMode ? '0.0000' : (NET_PROFIT_THRESHOLD * 100).toFixed(4)}%` +
+      (this.demoMode ? '  (net<0 gross-positive trades execute as DEMO TRADEs)' : ''),
+    );
+  }
+
+  getDemoMode(): boolean {
+    return this.demoMode;
+  }
+
+  setDemoMode(enabled: boolean): void {
+    this.demoMode = enabled;
+    console.log(`[engine] DEMO_MODE toggled → ${enabled}`);
   }
 
   update(book: OrderBook): void {
@@ -97,22 +104,23 @@ export class ArbitrageEngine extends EventEmitter {
     const costPerBtc    = effectiveBuy  * (1 + buyFee);
     const revenuePerBtc = effectiveSell * (1 - sellFee);
 
-    const netProfitPct  = (revenuePerBtc - costPerBtc) / costPerBtc;
-    const rawSpreadPct  = (sellBook.bestBid - buyBook.bestAsk) / buyBook.bestAsk;
+    const netProfitPct = (revenuePerBtc - costPerBtc) / costPerBtc;
+    const rawSpreadPct = (sellBook.bestBid - buyBook.bestAsk) / buyBook.bestAsk;
 
-    // DEMO TRADE: gross spread is positive but net spread is negative after fees+slippage.
-    // Only fires in DEMO_MODE — lets the dashboard show trade flow without a real inefficiency.
-    const isDemoTrade = DEMO_MODE && rawSpreadPct > 0 && netProfitPct < 0;
+    // In demo mode the threshold drops to 0 (any positive-net trade executes normally).
+    // Additionally, gross-positive but net-negative trades execute as labelled DEMO TRADEs.
+    const minNet      = this.demoMode ? 0 : NET_PROFIT_THRESHOLD;
+    const isDemoTrade = this.demoMode && rawSpreadPct > 0 && netProfitPct < 0;
 
     console.log(
       `[arb] ${buyExchange}→${sellExchange}` +
       `  raw:${rawSpreadPct >= 0 ? '+' : ''}${(rawSpreadPct * 100).toFixed(4)}%` +
       `  net:${netProfitPct >= 0 ? '+' : ''}${(netProfitPct * 100).toFixed(4)}%` +
-      `  threshold:${(MIN_NET_PROFIT_PCT * 100).toFixed(4)}%` +
-      (netProfitPct >= MIN_NET_PROFIT_PCT ? '  ✓ OPPORTUNITY' : isDemoTrade ? '  ⚡ DEMO TRADE' : ''),
+      `  threshold:${(minNet * 100).toFixed(4)}%` +
+      (netProfitPct >= minNet ? '  ✓ OPPORTUNITY' : isDemoTrade ? '  ⚡ DEMO TRADE' : ''),
     );
 
-    if (netProfitPct < MIN_NET_PROFIT_PCT && !isDemoTrade) return;
+    if (netProfitPct < minNet && !isDemoTrade) return;
 
     // ── Trade size decision ──────────────────────────────────────────────────
     const buyerBalance  = this.wallet.getBalance(buyExchange);

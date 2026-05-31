@@ -39,6 +39,7 @@ export default function App() {
     connStatus,
     circuitBreaker,
     demoMode,
+    toggleDemoMode,
     uptimeBaseMs,
     stats,
   } = useArbitrageData();
@@ -55,11 +56,17 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-5 text-xs">
-          {demoMode && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-accent/15 text-accent border border-accent/30 animate-pulse-slow">
-              ◈ Demo Mode
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={toggleDemoMode}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest border transition-colors duration-200 cursor-pointer ${
+              demoMode
+                ? 'bg-accent/15 text-accent border-accent/30 hover:bg-accent/25'
+                : 'bg-transparent text-muted border-dim hover:border-subtle hover:text-subtle'
+            }`}
+          >
+            ◈ Demo Mode {demoMode ? 'ON' : 'OFF'}
+          </button>
           {circuitBreaker.active && (
             <span className="text-loss font-bold animate-pulse text-[11px]">
               ⚡ Circuit Breaker Active

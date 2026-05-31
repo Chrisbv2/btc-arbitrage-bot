@@ -107,7 +107,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
       cb(new Error(`CORS: origin ${origin} not permitted`));
     },
-    methods: ['GET'],
+    methods: ['GET', 'POST'],
     credentials: false,
   }),
 );
