@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(sudo chown -R 501:20 \"/Users/christopherbetancourt/.npm\")",
-      "Bash(npm install *)",
-      "Bash(npx tsc *)"
-    ]
-  }
-}
