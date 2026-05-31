@@ -103,11 +103,19 @@ export function buildRouter(
   connectionStatus: Record<string, boolean>,
   startTime: number,
   demoMode: boolean,
+  allowedOrigins: string[],
 ): Router {
   const router = Router();
 
   // ── GET /api/stream — Server-Sent Events ────────────────────────────────────
   router.get('/stream', (req: Request, res: Response) => {
+    // Set CORS explicitly here — flushHeaders() locks the headers immediately and
+    // the global cors() middleware may not have written Access-Control-Allow-Origin
+    // before the SSE connection is established in some proxy configurations.
+    const origin = req.headers['origin'];
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');

@@ -88,7 +88,8 @@ engine.on('circuitBreaker', (evt) => {
 
 // ── Express ───────────────────────────────────────────────────────────────────
 
-// CORS: local dev + optional Vercel production URL
+// CORS: local dev + Railway/Vercel production URLs.
+// Set FRONTEND_URL in the backend Railway service env vars to the frontend origin.
 const allowedOrigins = [
   'http://localhost:5173',
   'https://localhost:5173',
@@ -96,11 +97,13 @@ const allowedOrigins = [
   ...(process.env['VERCEL_URL']   ? [`https://${process.env['VERCEL_URL']}`] : []),
 ];
 
+console.log('[cors] allowed origins:', allowedOrigins);
+
 const app = express();
 app.use(
   cors({
     origin: (origin, cb) => {
-      // Allow server-to-server / curl requests (no origin header)
+      // Allow server-to-server / curl (no Origin header)
       if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
       cb(new Error(`CORS: origin ${origin} not permitted`));
     },
@@ -109,7 +112,7 @@ app.use(
   }),
 );
 app.use(express.json());
-app.use('/api', buildRouter(db, engine, wallet, connectionStatus, startTime, DEMO_MODE));
+app.use('/api', buildRouter(db, engine, wallet, connectionStatus, startTime, DEMO_MODE, allowedOrigins));
 
 app.listen(PORT, () => {
   console.log(`[server] http://localhost:${PORT}`);
