@@ -141,7 +141,12 @@ export function buildRouter(
       );
     }
 
-    req.on('close', () => sseClients.delete(res));
+    // Railway kills idle connections after 60s — send a SSE comment every 30s to prevent it.
+    const keepalive = setInterval(() => res.write(': keepalive\n\n'), 30_000);
+    req.on('close', () => {
+      clearInterval(keepalive);
+      sseClients.delete(res);
+    });
   });
 
   // ── GET /api/status ─────────────────────────────────────────────────────────
