@@ -398,6 +398,20 @@ btc-arbitrage-bot/
 
 ---
 
+## Screenshots
+
+### Demo Mode ON
+![Demo Mode ON](docs/screenshots/demo_mode.gif)
+
+Live dashboard with `DEMO_MODE=true`. The engine executes trades whenever the gross spread is positive, even when fees and slippage make the net spread negative. These executions appear with an amber **DEMO TRADE** badge and orange P&L to distinguish them from real profitable trades.
+
+### Production Mode
+![Production Mode](docs/screenshots/production_mode.gif)
+
+Live dashboard with `DEMO_MODE=false`. Only trades where the net spread clears the 0.15% profitability threshold (after Binance 0.10% + Kraken 0.26% fees and 0.05% per-side slippage) are executed, shown in green.
+
+---
+
 ## License
 
 MIT
